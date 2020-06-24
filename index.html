@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>2.5D версия</title>
+	<script src = "jquery-3.4.1.min.js"></script>
+	<script src = "matrix.js"></script>
+	<script src = "foxMatrix.js"></script>
+	<script src = "fontawesome/js/all.js"></script>
+	<link rel="stylesheet" type="text/css" href="style.css" >
+</head>
+<body>
+	<header>
+		<p id="logo">
+			<b>Я не умею в веб. Теперь в 3D!</b>
+		</p>
+		<div class="top-buttons">
+			<button id="info" title="Инструкция к применению" class="button" onclick="alert('1) Удержите ЛКМ на рабочем поле чтобы выделить точки.\n2) Прокручивайте камеру с помощью ПКМ.\n3) Клавиша \'G\' показывает/скрывает сетку.\n4) Клавиши \'X\',\'Y\',\'Z\' показывают/скрывают соответствующие оси.\n');">
+					<i class="fas fa-question-circle" aria-hidden="true"></i>
+			</button>
+			<!-- Кнопка загрузки .svg изображения TODO: add JS -->
+			<button class="button" title="Загрузить из локального json-файла" onclick="document.getElementById('file-input').click();">
+					<input id="file-input" accept="application/json" type="file" name="name" style="display: none;" />
+					<i class="fa fa-folder" aria-hidden="true"></i>
+			</button>
+			<!-- Кнопка сохранения рабочего поля в .svg TODO: add JS -->
+			<button id="save" class="button" onclick="saveLocally()" title="Сохранить в локальный json-файл">
+					<i class="fa fa-download" aria-hidden="true"></i>
+			</button>
+			<button class = 'toolIcon' onclick='chmode(4)' title='Сохранить на облако'>
+				<i class="fas fa-cloud-upload-alt"></i></button>
+		</div>
+	</header>
+	<ul class = "context-menu" id = "group-menu">
+		<li onclick='renameGroup()'><i class="far fa-edit"></i> Переименовать группу</li>
+		<li onclick='colorGroup()'><i class="fas fa-paint-brush"></i> Изменить цвет</li>
+		<li onclick='deleteGroup()'><i class="far fa-trash-alt"></i> Удалить группу</li>
+	</ul>
+
+	<ul class = "context-menu" id = "save-menu">
+		<li onclick='deleteSaving()'><i class="far fa-trash-alt"></i> Удалить объект</li>
+	</ul>
+
+	<div id = 'tools' class = 'leftPanel'>
+		<div class = 'toolIcons'>
+			<button class = 'toolIcon active' onclick='chmode(0)' title='Выделение'>
+				<i class="fas fa-mouse-pointer"></i></button>
+			<button class = 'toolIcon' onclick='chmode(5)' title='Операции с вершинами'>
+				<i class="fas fa-drafting-compass"></i></button>
+			<button class = 'toolIcon' onclick='chmode(1)' title='Создание точек'><i class="fas fa-pencil-ruler"></i></button>
+			<button class = 'toolIcon' onclick='chmode(2)' title='Настройки сцены'><i class="fas fa-sliders-h"></i></button>
+			<button class = 'toolIcon' onclick='chmode(3)' title='Морфинг'><i class="fas fa-bezier-curve"></i></button>
+		</div>
+
+		<div class = 'toolWindow no-fox' id = 'pointOperations'>
+			<p class = 'center'>Афинные преобразования</p>
+			<p>Глобальная система коор-т
+			<span style="display:inline-block;">
+				<input type="checkbox" id="cbx" style="display:none"/>
+	  			<label for="cbx" class="toggle"><span></span></label>    
+	  		</span>
+			</p>
+			<button class = 'btn operate' id = 'translate' onclick = "translate()"><i class="fas fa-arrows-alt"></i> Перемещение</button>
+			<button class = 'btn operate' id = 'rotate' onclick = "rotate()"><i class="fas fa-sync"></i> Вращение</button>
+			<button class = 'btn operate' id = 'scaling' onclick = "scaling()"><i class="fas fa-expand-alt"></i> Масштабирование</button>
+			<button class = 'btn operate' id = 'fullScaling' onclick = "fullScaling()">
+				<i class="fas fa-expand-arrows-alt"></i> Полное масштабирование</button>
+			<button class = 'btn operate' id = 'mirrorHorizontal' onclick = "mirrorHorizontal()">
+				<i class="fas fa-arrows-alt-h"></i> Отразить по горизонтали</button>
+
+			<button class = 'btn operate' id = 'mirrorHorizontal' onclick = "mirrorVertical()">
+				<i class="fas fa-arrows-alt-v"></i> Отразить по вертикали</button>
+			<br/>
+			<p class = 'center'>Операции для точек</p>
+			<button class = 'btn operate' onclick = "extrude()"><i class="fas fa-leaf"></i> Добавить размерность</button>
+			<button class = 'btn operate' onclick = "connect()"><i class="fas fa-link"></i> Объединить в одну</button>
+			<button class = 'btn operate' onclick = "disconnect()"><i class="fas fa-unlink"></i> Разбить на несколько</button>
+	
+			<br/>
+			<p class = 'center'>Выравнивание</p>
+			<button class = 'btn operate' onclick = "zeroX()">
+				<i class="fas fa-ruler-horizontal"></i> Выровнять по оси X</button>
+			<button class = 'btn operate' onclick = "zeroY()">
+				<i class="fas fa-ruler-vertical"></i> Выровнять по оси Y</button>
+			<button class = 'btn operate' onclick = "zeroZ()">
+				<i class="fas fa-ruler"></i> Выровнять по оси Z</button>
+		</div>
+
+		<div class = 'toolWindow' id = 'settings'>
+			<p class = 'center'>Настройка камеры</p>
+			<p id = 'camFovP'>1</p>
+			<input type="range" id = 'camFov' min="0" max="100" step="1" value='100'>
+			<p class = 'center'>Перспективная матрица:</p>
+			<p id = 'camFovMatrix' class = 'center'></p>
+		</div>
+
+		<div class = 'toolWindow' id = 'pointCreation'>
+			<p class = 'center'>Режим рисования</p>
+			<br/>
+			<p>Кликните ЛКМ по рабочему полю чтобы создать точку.</p>
+			<p>Перетащите точку чтобы создать отрезок.</p> 
+			<p>Перетащите точку зажав Ctrl чтобы прикрепиться к бижайшей точке.</p> 
+		</div> 
+
+		<div class = 'toolWindow active' id = 'cursor'>
+			<p class = 'center'>Выделенные точки:</p>
+			<div class = 'points'>
+			
+			</div>
+						
+			<button class = 'btn' onclick = "makeGroup()"><i class="far fa-object-group"></i> Создать группу</button>
+			<p class = 'center'>Группы точек:</p>
+			<ul class = 'groups'>
+
+			</ul>
+
+		</div>
+
+		<div class = 'toolWindow ' id = 'morphing'>
+			<p class = 'center'>Морфинг</p>
+			<button class = 'btn' onclick = "morphStart()">
+				<i class="fas fa-male"></i> Задать начальное значение</button>
+			<button class = 'btn' onclick = "morphEnd()">
+			<i class="fas fa-male" style="transform: rotate(180deg); filter: invert(50%);"></i></i> Задать второе значение</button>
+			<p class = 'center' id = 'morphValue'>0</p>
+			<input type="range" id = 'morph' min="0" max="100" step="1" value='100'>
+		</div>
+ 
+		<div class = 'toolWindow no-fox' id = 'saving'>
+			<p class = 'center'>Сохранение</p>
+			<button class = 'btn' onclick = "saving()"><i class="far fa-save"></i> Сохранить в облако</button>
+			
+			<div id = 'loads'>
+
+			</div>
+		</div>
+
+		<div class = 'toolWindow ' id = 'curssor'>
+			<button onclick="rotate()">Повернуть)</button>
+			<input type = "text" id = "sdvigx" class = 'block' value='0'/>
+			<input type = "text" id = "sdvigy"class = 'block' value='0'/>
+			<input type = "text" id = "sdvigz"class = 'block' value='0'/>
+
+			<p id = 'matr'>kek</p>
+		</div>
+	</div>
+	
+	<canvas height = '550' width = '1000' id ='can'>
+	
+	</canvas>
+
+	<script src = "scripts/morphing.js"></script>
+	<script src = "scripts/engine.js"></script>
+	<script src = "scripts/canvas.js"></script>
+	<script src = "scripts/settings.js"></script>
+	<script src = "scripts/groups.js"></script>
+	<script src = "scripts/saving.js"></script>
+	<script src = "scripts/point-tools.js"></script>
+</body>
+</html>
